@@ -12,6 +12,7 @@
     "@std/webgpu": "jsr:@std/webgpu@^0.224.7",
     "@types/react": "npm:@types/react@^18.3.12",
     "@vitejs/plugin-react": "npm:@vitejs/plugin-react@^4.3.3",
+    "@webgpu/types": "npm:@webgpu/types@^0.1.56",
     "react": "npm:react@^18.3.1",
     "react-dom": "npm:react-dom@^18.3.1",
     "react-router-dom": "npm:react-router-dom@^7.3.0",
@@ -21,7 +22,8 @@
     "types": [
       "react",
       "react-dom",
-      "@types/react"
+      "@types/react",
+      "@webgpu/types"
     ],
     "lib": [
       "dom",
@@ -30,5 +32,6 @@
     ],
     "jsx": "react-jsx",
     "jsxImportSource": "react"
-  }
+  },
+  "unstable": ["webgpu"]
 }
