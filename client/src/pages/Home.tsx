@@ -1,13 +1,14 @@
-import React from "react";
-import useCheckWebGPU from "../hooks/helper";
+import useCheckWebGPU from "../hooks/useCheckWebGPU";
+import { Link } from "react-router-dom";
 
 export default function Home() {
-  const { result } = useCheckWebGPU();
+  const { message } = useCheckWebGPU();
 
   return (
     <div>
       <h1>Check WebGPU</h1>
-      <h2>{result}</h2>
+      <h2>{message}</h2>
+      <Link to="/triangle">Triangle</Link>
     </div>
   )
 }

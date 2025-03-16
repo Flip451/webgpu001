@@ -3,7 +3,8 @@
     "dev": "deno run -A --node-modules-dir=auto npm:vite",
     "build": "deno run -A --node-modules-dir=auto npm:vite build",
     "server:start": "deno run -A --node-modules-dir --watch ./server/main.ts",
-    "serve": "deno task build && deno task server:start"
+    "serve": "deno task build && deno task server:start",
+    "lint": "deno lint"
   },
   "imports": {
     "@deno/vite-plugin": "npm:@deno/vite-plugin@^1.0.0",
@@ -33,5 +34,12 @@
     "jsx": "react-jsx",
     "jsxImportSource": "react"
   },
-  "unstable": ["webgpu"]
+  "unstable": ["webgpu"],
+  "lint": {
+    "include": ["client/src/"],
+    "exclude": ["client/src/vite-env.d.ts"],
+    "rules": {
+      "tags": ["recommended"]
+    }
+  }
 }
