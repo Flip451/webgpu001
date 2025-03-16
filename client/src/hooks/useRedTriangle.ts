@@ -1,5 +1,3 @@
-/// <reference types="@webgpu/types" />
-
 import { useEffect, useState } from "react";
 import triangleWGSL from '../shaders/triangle.wgsl?raw';
 
@@ -19,31 +17,29 @@ const useRedTriangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
 
   const render = (
     device: GPUDevice,
-    context: GPUCanvasContext,
+    view: GPUTextureView,
     renderPipeline: GPURenderPipeline,
   ) => {
     const commandEncoder = device.createCommandEncoder();
-    const textureView = context.getCurrentTexture().createView();
 
-      const renderPassDescriptor: GPURenderPassDescriptor = {
-        colorAttachments: [
-          {
-            view: textureView,
-            clearValue: { r: 0, g: 0, b: 0, a: 1 },
-            loadOp: 'clear',
-            storeOp: 'store',
-          },
-        ],
-      };
+    const renderPassDescriptor: GPURenderPassDescriptor = {
+      colorAttachments: [
+        {
+          view,
+          clearValue: [0, 0, 0, 0],
+          loadOp: 'clear',
+          storeOp: 'store',
+        },
+      ],
+    };
 
     const passEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
     passEncoder.setPipeline(renderPipeline);
     passEncoder.draw(3);
     passEncoder.end();
 
-    const commandBuffer = commandEncoder.finish();
-    device.queue.submit([commandBuffer]);
-    requestAnimationFrame(render.bind(null, device, context, renderPipeline));
+    device.queue.submit([commandEncoder.finish()]);
+    requestAnimationFrame(render.bind(null, device, view, renderPipeline));
   }
 
   useEffect(() => {
@@ -53,7 +49,9 @@ const useRedTriangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
     }
 
     const init = async () => {
-      const adapter = await navigator.gpu?.requestAdapter();
+      const adapter = await navigator.gpu?.requestAdapter({
+        featureLevel: 'compatibility'
+      });
       const device = await adapter?.requestDevice();
 
       if (!device) {
@@ -62,8 +60,13 @@ const useRedTriangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
         return;
       }
 
-      const context = canvasRef.current?.getContext('webgpu')!;
-      console.log(context);
+      const context = canvasRef.current?.getContext('webgpu');
+      if (!context) {
+        setIsLoading(false);
+        setMessage("no webgpu context");
+        return;
+      }
+
       const presentationFormat = navigator.gpu.getPreferredCanvasFormat();
 
       context.configure({
@@ -89,17 +92,19 @@ const useRedTriangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
         },
         primitive: {
           topology: 'triangle-list',
-        }
+        },
       });
+
+      const view = context.getCurrentTexture().createView()
 
       setIsLoading(false);
       setMessage("Great, your current browser supports WebGPU!");
 
-      render(device, context, renderPipeline);
+      render(device, view, renderPipeline);
     };
 
     init();
-  }, [canvasRef, isWebGPUSupported])
+  }, [canvasRef]);
 
   return {
     message,
