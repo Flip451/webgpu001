@@ -109,7 +109,7 @@ const useSRGBTriangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
     device.queue.submit([commandEncoder.finish()]);
   }, [canvasRef, deviceRef])
 
-  const init = useCallback(async () => {
+  const init = useCallback(() => {
     if (!deviceRef.current || !canvasRef.current) {
       console.log("no device or canvas");
       return;
