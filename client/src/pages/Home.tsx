@@ -8,7 +8,12 @@ export default function Home() {
     <div>
       <h1>Check WebGPU</h1>
       <h2>{message}</h2>
-      <Link to="/triangle">Triangle</Link>
+      <div>
+        <Link to="/triangle">Triangle</Link>
+      </div>
+      <div>
+        <Link to="/srgb-triangle">SRGB Triangle</Link>
+      </div>
     </div>
   )
 }
