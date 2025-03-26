@@ -63,6 +63,7 @@ const useSRGBTriangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
 
   const render = useCallback((
     renderPipeline: GPURenderPipeline,
+    presentationFormat: GPUTextureFormat,
   ) => {
     if (!deviceRef.current || !canvasRef.current) {
       console.log("no device or canvas");
@@ -77,6 +78,13 @@ const useSRGBTriangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
       console.log("no webgpu context");
       throw new Error("no webgpu context");
     }
+
+    context.configure({
+      device,
+      format: presentationFormat,
+      alphaMode: 'premultiplied',
+    });
+
 
     const view = context.getCurrentTexture().createView()
 
@@ -110,27 +118,14 @@ const useSRGBTriangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
   }, [canvasRef, deviceRef])
 
   const init = useCallback(() => {
-    if (!deviceRef.current || !canvasRef.current) {
-      console.log("no device or canvas");
+    if (!deviceRef.current) {
+      console.log("no device");
       return;
     }
 
     const device = deviceRef.current;
 
-    const context = canvasRef.current.getContext('webgpu');
-    if (!context) {
-      setIsLoading(false);
-      setMessage("no webgpu context");
-      return;
-    }
-
     const presentationFormat = navigator.gpu.getPreferredCanvasFormat();
-
-    context.configure({
-      device,
-      format: presentationFormat,
-      alphaMode: 'premultiplied',
-    });
 
     const renderPipeline = device.createRenderPipeline({
       layout: 'auto',
@@ -171,7 +166,7 @@ const useSRGBTriangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
     changeColor({ r: 0, g: 0, b: 0, a: 1 });
 
     const animate = () => {
-      render(renderPipeline);
+      render(renderPipeline, presentationFormat);
       setAnimationFrameId(requestAnimationFrame(animate));
     };
 
