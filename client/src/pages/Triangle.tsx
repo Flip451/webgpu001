@@ -10,26 +10,6 @@ export default function Triangle() {
   return (
     <div>
       <h1>Triangle</h1>
-      <div>
-        <label>R</label>
-        <input type="range" min={0} max={1} step={2 ** (-8)} value={color.r} onChange={(e) => setColor({ ...color, r: Number(e.target.value) })} />
-      </div>
-      <div>
-        <label>G</label>
-        <input type="range" min={0} max={1} step={2 ** (-8)} value={color.g} onChange={(e) => setColor({ ...color, g: Number(e.target.value) })} />
-      </div>
-      <div>
-        <label>B</label>
-        <input type="range" min={0} max={1} step={2 ** (-8)} value={color.b} onChange={(e) => setColor({ ...color, b: Number(e.target.value) })} />
-      </div>
-      <div>
-        <label>A</label>
-        <input type="range" min={0} max={1} step={2 ** (-8)} value={color.a} onChange={(e) => setColor({ ...color, a: Number(e.target.value) })} />
-      </div>
-
-      <div>
-        <span>{`(R, G, B, A) = (${color.r}, ${color.g}, ${color.b}, ${color.a})`}</span>
-      </div>
 
       {isLoading && <h2>Loading...</h2>}
 

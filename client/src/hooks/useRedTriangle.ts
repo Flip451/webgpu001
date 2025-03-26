@@ -17,10 +17,24 @@ const useRedTriangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
 
   const render = (
     device: GPUDevice,
-    view: GPUTextureView,
+    presentationFormat: GPUTextureFormat,
     renderPipeline: GPURenderPipeline,
   ) => {
     const commandEncoder = device.createCommandEncoder();
+
+    const context = canvasRef.current?.getContext('webgpu');
+    if (!context) {
+      console.log("no webgpu context");
+      return;
+    }
+
+    context.configure({
+      device,
+      format: presentationFormat,
+      alphaMode: 'premultiplied',
+    });
+
+    const view = context.getCurrentTexture().createView()
 
     const renderPassDescriptor: GPURenderPassDescriptor = {
       colorAttachments: [
@@ -39,7 +53,7 @@ const useRedTriangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
     passEncoder.end();
 
     device.queue.submit([commandEncoder.finish()]);
-    requestAnimationFrame(render.bind(null, device, view, renderPipeline));
+    requestAnimationFrame(render.bind(null, device, presentationFormat, renderPipeline));
   }
 
   useEffect(() => {
@@ -60,20 +74,7 @@ const useRedTriangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
         return;
       }
 
-      const context = canvasRef.current?.getContext('webgpu');
-      if (!context) {
-        setIsLoading(false);
-        setMessage("no webgpu context");
-        return;
-      }
-
       const presentationFormat = navigator.gpu.getPreferredCanvasFormat();
-
-      context.configure({
-        device,
-        format: presentationFormat,
-        alphaMode: 'premultiplied',
-      });
 
       const renderPipeline = device.createRenderPipeline({
         layout: 'auto',
@@ -95,12 +96,10 @@ const useRedTriangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
         },
       });
 
-      const view = context.getCurrentTexture().createView()
-
       setIsLoading(false);
       setMessage("Great, your current browser supports WebGPU!");
 
-      render(device, view, renderPipeline);
+      render(device, presentationFormat, renderPipeline);
     };
 
     init();
