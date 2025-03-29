@@ -43,17 +43,16 @@ const RGBAToVertices = (color: Color) => {
 }
 
 const useSRGBRectangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
-  // const [srgb, setSrgb] = useState<Color>({ r: 0.0, g: 0.0, b: 0.0, a: 1.0 });
-  // const [renderPipeline, setRenderPipeline] = useState<GPURenderPipeline | null>(null);
+  const [color, setColor] = useState<Color>({ r: 0.0, g: 0.0, b: 0.0, a: 255.0 });
   const [message, setMessage] = useState<string>("starting...");
   const g_device = useRef<GPUDevice | null>(null);
 
-  const initialize = useCallback(async () => {
+  const getContext = useCallback(() => {
     const canvas = canvasRef.current;
 
     if (!canvas) {
       throw new Error("no canvas");
-    };
+    }
 
     // webgpu コンテキストの取得
     const context = canvas.getContext("webgpu");
@@ -62,6 +61,10 @@ const useSRGBRectangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
       throw new Error("no webgpu context");
     }
 
+    return context;
+  }, [])
+
+  const loadDevice = useCallback(async () => {
     // device の取得{adapterは物理デバイス（物理的なGPU）、deviceは論理デバイス（抽象化したGPU）)
     const g_adapter = await navigator.gpu.requestAdapter();
     const g_device_tmp = await g_adapter?.requestDevice();
@@ -72,17 +75,41 @@ const useSRGBRectangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
 
     g_device.current = g_device_tmp;
 
-    // context の設定
+    return g_device.current;
+  }, [])
+
+  const configureContext = useCallback((context: GPUCanvasContext, device: GPUDevice) => {
     const presentationFormat = navigator.gpu.getPreferredCanvasFormat();
     context.configure({
-      device: g_device.current,
+      device,
       format: presentationFormat,
       alphaMode: 'premultiplied',
     });
 
-    const { vertexSize, vertexCount, vertexArray, positionOffset, colorOffset } = RGBAToVertices({ r: 255.0, g: 0.0, b: 0.0, a: 255.0 });
+    return { presentationFormat };
+  }, [])
+
+  const initialize = useCallback(async () => {
+    const context = getContext();
+    const device = await loadDevice();
+    const { presentationFormat } = configureContext(context, device);
+
+    return {
+      context,
+      presentationFormat,
+    }
+  }, [getContext])
+
+  const createPipeline = useCallback((presentationFormat: GPUTextureFormat, color: Color) => {
+    const device = g_device.current;
+
+    if (!device) {
+      throw new Error("no device: you must call loadDevice() first");
+    }
+
+    const { vertexSize, vertexCount, vertexArray, positionOffset, colorOffset } = RGBAToVertices(color);
     // 頂点バッファの作成
-    const vertexBuffer = g_device.current.createBuffer({
+    const vertexBuffer = device.createBuffer({
       size: vertexArray.byteLength,
       usage: GPUBufferUsage.VERTEX,
       mappedAtCreation: true,
@@ -93,10 +120,10 @@ const useSRGBRectangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
 
     // RenderPipeline の設定
     // 詳細は https://zenn.dev/emadurandal/books/cb6818fd3a1b2e/viewer/hello_triangle#renderpipeline%E3%81%AE%E8%A8%AD%E5%AE%9A を参照
-    const pipeline = g_device.current.createRenderPipeline({
+    const pipeline = device.createRenderPipeline({
       layout: 'auto',
       vertex: {
-        module: g_device.current.createShaderModule({
+        module: device.createShaderModule({
           code: bufferWGSL,
         }),
         entryPoint: 'vs_main',
@@ -121,7 +148,7 @@ const useSRGBRectangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
         ],
       },
       fragment: {
-        module: g_device.current.createShaderModule({
+        module: device.createShaderModule({
           code: bufferWGSL,
         }),
         entryPoint: 'fs_main',
@@ -137,12 +164,7 @@ const useSRGBRectangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
       }
     })
 
-    return {
-      context,
-      vertexCount,
-      vertexBuffer,
-      pipeline,
-    }
+    return { pipeline, vertexCount, vertexBuffer };
   }, [])
 
   const { isLoading, data, error } = useQuery({
@@ -154,7 +176,7 @@ const useSRGBRectangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
     staleTime: 0
   })
 
-  const frame = useCallback((context: GPUCanvasContext, pipeline: GPURenderPipeline, vertexCount: number, vertexBuffer: GPUBuffer) => {
+  const render = useCallback((context: GPUCanvasContext, pipeline: GPURenderPipeline, vertexCount: number, vertexBuffer: GPUBuffer) => {
     const g_device_unwrapped = g_device.current;
 
     if (!g_device_unwrapped) {
@@ -194,18 +216,23 @@ const useSRGBRectangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
     g_device_unwrapped.queue.submit([commandEncoder.finish()]);
   }, [])
 
+  const frame = useCallback((context: GPUCanvasContext, presentationFormat: GPUTextureFormat) => {
+    const { pipeline, vertexCount, vertexBuffer } = createPipeline(presentationFormat, color);
+    render(context, pipeline, vertexCount, vertexBuffer);
+  }, [render, color])
+
   useEffect(() => {
     if (!data) {
       return;
     }
 
-    const { context, pipeline, vertexCount, vertexBuffer } = data;
+    const { context, presentationFormat } = data;
     setMessage("started");
 
     let animationFrameId: number;
     const animationFrame = () => {
       try {
-        frame(context, pipeline, vertexCount, vertexBuffer);
+        frame(context, presentationFormat)
         animationFrameId = requestAnimationFrame(animationFrame);
       } catch (error) {
         console.error(error);
@@ -218,12 +245,6 @@ const useSRGBRectangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
 
     return () => {
       cancelAnimationFrame(animationFrameId);
-
-      if (g_device.current) {
-        g_device.current.destroy();
-        g_device.current = null;
-      }
-
       setMessage("stopped");
     }
   }, [frame, data]);
@@ -237,6 +258,8 @@ const useSRGBRectangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
   return {
     isLoading,
     message,
+    color,
+    setColor,
   }
 };
 
