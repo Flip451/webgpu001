@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { Link } from "react-router-dom";
 import useRedTriangle from "../hooks/useRedTriangle";
+import HomeLink from "../components/HomeLink";
 
 export default function RedTriangle() {
   const ref = useRef<HTMLCanvasElement>(null)
@@ -16,9 +17,8 @@ export default function RedTriangle() {
       <div>
         <canvas ref={ref} width="640" height="480"></canvas>
       </div>
-      <div>
-        <Link to="/">Home</Link>
-      </div>
+
+      <HomeLink />
     </div>
   )
 }

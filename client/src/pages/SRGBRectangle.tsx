@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { Link } from "react-router-dom";
 import useSRGBRectangle from "../hooks/useSRGBRectangle";
+import HomeLink from "../components/HomeLink";
 export default function SRGBRectangle() {
   const ref = useRef<HTMLCanvasElement>(null)
   const { isLoading, message, color, setColor } = useSRGBRectangle(ref)
@@ -33,9 +34,8 @@ export default function SRGBRectangle() {
       <div>
         <canvas ref={ref} width="640" height="480"></canvas>
       </div>
-      <div>
-        <Link to="/">Home</Link>
-      </div>
+
+      <HomeLink />
     </div>
   )
 }
