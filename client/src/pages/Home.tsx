@@ -10,13 +10,10 @@ export default function Home() {
       <h2>{message}</h2>
       <ul>
         <li>
-          <Link to="/triangle">Triangle</Link>
+          <Link to="/red-triangle">Red Triangle</Link>
         </li>
         <li>
           <Link to="/srgb-triangle">SRGB Triangle</Link>
-        </li>
-        <li>
-          <Link to="/triangle-msaa">Triangle MSAA</Link>
         </li>
       </ul>
     </div>
