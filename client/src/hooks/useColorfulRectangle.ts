@@ -33,7 +33,7 @@ const colorIntoNormalizedArray = (color: Color) => {
   return [rNormalized, gNormalized, bNormalized, aNormalized];
 }
 
-const RGBAToVertices = (colors: BundledColors) => {
+const getVertices = (colors: BundledColors) => {
   const vertexSize = 4 * 8;  // Byte size of one rectangle vertex.
   const positionOffset = 0;
   const colorOffset = 4 * 4;  // Byte offset of vertex color.
@@ -45,17 +45,18 @@ const RGBAToVertices = (colors: BundledColors) => {
   const rightBottom = [0.5, -0.5, 0.0, 1.0, ...colorIntoNormalizedArray(colors.rightBottomColor)];
 
   const vertexArray = new Float32Array([
-    // 一つ目の三角形
     ...leftTop,
     ...leftBottom,
-    ...rightBottom,
-    // 二つ目の三角形
-    ...leftTop,
-    ...rightBottom,
     ...rightTop,
+    ...rightBottom,
   ])
 
-  return { vertexSize, vertexCount, vertexArray, positionOffset, colorOffset }
+  const indexArray = new Uint16Array([
+    0, 1, 3,
+    0, 3, 2,
+  ])
+
+  return { vertexSize, vertexCount, vertexArray, positionOffset, colorOffset, indexArray, indexCount: indexArray.length }
 }
 
 const useColorfulRectangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
@@ -126,7 +127,7 @@ const useColorfulRectangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => 
       throw new Error("no device: you must call loadDevice() first");
     }
 
-    const { vertexSize, vertexCount, vertexArray, positionOffset, colorOffset } = RGBAToVertices(colors);
+    const { vertexSize, vertexArray, positionOffset, colorOffset, indexArray, indexCount } = getVertices(colors);
     // 頂点バッファの作成
     const vertexBuffer = device.createBuffer({
       size: vertexArray.byteLength,
@@ -136,6 +137,15 @@ const useColorfulRectangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => 
 
     new Float32Array(vertexBuffer.getMappedRange()).set(vertexArray);
     vertexBuffer.unmap();
+
+    const indexBuffer = device.createBuffer({
+      size: indexArray.byteLength,
+      usage: GPUBufferUsage.INDEX,
+      mappedAtCreation: true,
+    });
+
+    new Uint16Array(indexBuffer.getMappedRange()).set(indexArray);
+    indexBuffer.unmap();
 
     // RenderPipeline の設定
     // 詳細は https://zenn.dev/emadurandal/books/cb6818fd3a1b2e/viewer/hello_triangle#renderpipeline%E3%81%AE%E8%A8%AD%E5%AE%9A を参照
@@ -183,7 +193,7 @@ const useColorfulRectangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => 
       }
     })
 
-    return { pipeline, vertexCount, vertexBuffer };
+    return { pipeline, vertexBuffer, indexBuffer, indexCount };
   }, [])
 
   const { isLoading, data, error } = useQuery({
@@ -195,7 +205,7 @@ const useColorfulRectangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => 
     staleTime: 0
   })
 
-  const render = useCallback((context: GPUCanvasContext, pipeline: GPURenderPipeline, vertexCount: number, vertexBuffer: GPUBuffer) => {
+  const render = useCallback((context: GPUCanvasContext, pipeline: GPURenderPipeline, vertexBuffer: GPUBuffer, indexBuffer: GPUBuffer, indexCount: number) => {
     const g_device_unwrapped = g_device.current;
 
     if (!g_device_unwrapped) {
@@ -223,12 +233,12 @@ const useColorfulRectangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => 
     const passEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
     passEncoder.setPipeline(pipeline);
     passEncoder.setVertexBuffer(0, vertexBuffer)
-
+    passEncoder.setIndexBuffer(indexBuffer, 'uint16')
     // param vertexCount - 描画する頂点の数．
     // param instanceCount - 描画するインスタンスの数．
     // param firstVertex - 描画を開始する頂点バッファ内のオフセット（頂点単位）．
     // param firstInstance - 描画する最初のインスタンス．
-    passEncoder.draw(vertexCount, 1, 0, 0);
+    passEncoder.drawIndexed(indexCount);
 
     passEncoder.end();
 
@@ -236,8 +246,8 @@ const useColorfulRectangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => 
   }, [])
 
   const frame = useCallback((context: GPUCanvasContext, presentationFormat: GPUTextureFormat) => {
-    const { pipeline, vertexCount, vertexBuffer } = createPipeline(presentationFormat, bundleColors(leftTopColor, rightTopColor, leftBottomColor, rightBottomColor));
-    render(context, pipeline, vertexCount, vertexBuffer);
+    const { pipeline, vertexBuffer, indexBuffer, indexCount } = createPipeline(presentationFormat, bundleColors(leftTopColor, rightTopColor, leftBottomColor, rightBottomColor));
+    render(context, pipeline, vertexBuffer, indexBuffer, indexCount);
   }, [render, leftTopColor, rightTopColor, leftBottomColor, rightBottomColor])
 
   useEffect(() => {
