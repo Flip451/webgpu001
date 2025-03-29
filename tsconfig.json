@@ -20,7 +20,12 @@
         "allowJs": true,
         "types": [
             "vite/client"
-        ]
+        ],
+        "baseUrl": ".",
+        "paths": {
+            "@/*": ["./src/*"],
+            "~/*": ["./*"]
+        }
     },
     "include": [
         "client/src"
