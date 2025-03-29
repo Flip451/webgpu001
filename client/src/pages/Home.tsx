@@ -13,6 +13,9 @@ export default function Home() {
           <Link to="/red-triangle">Red Triangle</Link>
         </li>
         <li>
+          <Link to="/srgb-rectangle">SRGB Rectangle</Link>
+        </li>
+        <li>
           <Link to="/srgb-triangle">SRGB Triangle</Link>
         </li>
       </ul>

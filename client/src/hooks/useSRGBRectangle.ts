@@ -1,9 +1,50 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import triangleWGSL from "../shaders/triangle.wgsl?raw";
+import bufferWGSL from "../shaders/buffer.wgsl?raw";
 import queryKeys from "../config/queryKeys";
 import { useQuery } from "@tanstack/react-query";
 
-const useRedTriangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
+type Color = {
+  r: number;
+  g: number;
+  b: number;
+  a: number;
+}
+
+const RGBAToVertices = (color: Color) => {
+  const vertexSize = 4 * 8;  // Byte size of one rectangle vertex.
+  const positionOffset = 0;
+  const colorOffset = 4 * 4;  // Byte offset of vertex color.
+  const vertexCount = 3 * 2;  // 3 vertices * 2 triangles
+
+  const rNormalized = color.r / 255.0;
+  const gNormalized = color.g / 255.0;
+  const bNormalized = color.b / 255.0;
+  const aNormalized = color.a / 255.0;
+
+  const colorArray = [rNormalized, gNormalized, bNormalized, aNormalized];
+
+  const leftTop = [-0.5, 0.5, 0.0, 1.0, ...colorArray];
+  const rightTop = [0.5, 0.5, 0.0, 1.0, ...colorArray];
+  const leftBottom = [-0.5, -0.5, 0.0, 1.0, ...colorArray];
+  const rightBottom = [0.5, -0.5, 0.0, 1.0, ...colorArray];
+
+  const vertexArray = new Float32Array([
+    // 一つ目の三角形
+    ...leftTop,
+    ...leftBottom,
+    ...rightBottom,
+    // 二つ目の三角形
+    ...leftTop,
+    ...rightBottom,
+    ...rightTop,
+  ])
+
+  return { vertexSize, vertexCount, vertexArray, positionOffset, colorOffset }
+}
+
+const useSRGBRectangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
+  // const [srgb, setSrgb] = useState<Color>({ r: 0.0, g: 0.0, b: 0.0, a: 1.0 });
+  // const [renderPipeline, setRenderPipeline] = useState<GPURenderPipeline | null>(null);
   const [message, setMessage] = useState<string>("starting...");
   const g_device = useRef<GPUDevice | null>(null);
 
@@ -39,19 +80,49 @@ const useRedTriangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
       alphaMode: 'premultiplied',
     });
 
+    const { vertexSize, vertexCount, vertexArray, positionOffset, colorOffset } = RGBAToVertices({ r: 255.0, g: 0.0, b: 0.0, a: 255.0 });
+    // 頂点バッファの作成
+    const vertexBuffer = g_device.current.createBuffer({
+      size: vertexArray.byteLength,
+      usage: GPUBufferUsage.VERTEX,
+      mappedAtCreation: true,
+    });
+
+    new Float32Array(vertexBuffer.getMappedRange()).set(vertexArray);
+    vertexBuffer.unmap();
+
     // RenderPipeline の設定
     // 詳細は https://zenn.dev/emadurandal/books/cb6818fd3a1b2e/viewer/hello_triangle#renderpipeline%E3%81%AE%E8%A8%AD%E5%AE%9A を参照
     const pipeline = g_device.current.createRenderPipeline({
       layout: 'auto',
       vertex: {
         module: g_device.current.createShaderModule({
-          code: triangleWGSL,
+          code: bufferWGSL,
         }),
         entryPoint: 'vs_main',
+        buffers: [
+          {
+            arrayStride: vertexSize,
+            attributes: [
+              {
+                // position
+                shaderLocation: 0,
+                offset: positionOffset,
+                format: 'float32x4',
+              },
+              {
+                // color
+                shaderLocation: 1,
+                offset: colorOffset,
+                format: 'float32x4',
+              },
+            ],
+          },
+        ],
       },
       fragment: {
         module: g_device.current.createShaderModule({
-          code: triangleWGSL,
+          code: bufferWGSL,
         }),
         entryPoint: 'fs_main',
         targets: [
@@ -68,12 +139,14 @@ const useRedTriangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
 
     return {
       context,
+      vertexCount,
+      vertexBuffer,
       pipeline,
     }
   }, [])
 
   const { isLoading, data, error } = useQuery({
-    queryKey: [queryKeys.redTriangle],
+    queryKey: [queryKeys.srgbRectangle],
     queryFn: initialize,
     // コンポーネントがアンマウントされた後にキャッシュを無効化
     gcTime: 0,
@@ -81,7 +154,7 @@ const useRedTriangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
     staleTime: 0
   })
 
-  const frame = useCallback((context: GPUCanvasContext, pipeline: GPURenderPipeline) => {
+  const frame = useCallback((context: GPUCanvasContext, pipeline: GPURenderPipeline, vertexCount: number, vertexBuffer: GPUBuffer) => {
     const g_device_unwrapped = g_device.current;
 
     if (!g_device_unwrapped) {
@@ -108,12 +181,13 @@ const useRedTriangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
     };
     const passEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
     passEncoder.setPipeline(pipeline);
+    passEncoder.setVertexBuffer(0, vertexBuffer)
 
     // param vertexCount - 描画する頂点の数．
     // param instanceCount - 描画するインスタンスの数．
     // param firstVertex - 描画を開始する頂点バッファ内のオフセット（頂点単位）．
     // param firstInstance - 描画する最初のインスタンス．
-    passEncoder.draw(3, 1, 0, 0);
+    passEncoder.draw(vertexCount, 1, 0, 0);
 
     passEncoder.end();
 
@@ -125,15 +199,15 @@ const useRedTriangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
       return;
     }
 
-    const { context, pipeline } = data;
+    const { context, pipeline, vertexCount, vertexBuffer } = data;
     setMessage("started");
 
     let animationFrameId: number;
     const animationFrame = () => {
       try {
-        frame(context, pipeline);
+        frame(context, pipeline, vertexCount, vertexBuffer);
         animationFrameId = requestAnimationFrame(animationFrame);
-      } catch(error) {
+      } catch (error) {
         console.error(error);
         cancelAnimationFrame(animationFrameId);
         setMessage("Error occurred in animation frame");
@@ -166,4 +240,4 @@ const useRedTriangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
   }
 };
 
-export default useRedTriangle;
+export default useSRGBRectangle;

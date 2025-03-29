@@ -1,14 +1,13 @@
 import { useRef } from "react";
 import { Link } from "react-router-dom";
-import useRedTriangle from "../hooks/useRedTriangle";
-
-export default function RedTriangle() {
+import useSRGBRectangle from "../hooks/useSRGBRectangle";
+export default function SRGBRectangle() {
   const ref = useRef<HTMLCanvasElement>(null)
-  const { isLoading, message } = useRedTriangle(ref)
+  const { isLoading, message } = useSRGBRectangle(ref)
 
   return (
     <div>
-      <h1>Triangle</h1>
+      <h1>SRGB Quadrangle</h1>
 
       <h2>{message}</h2>
       {isLoading && <h2>Loading...</h2>}
