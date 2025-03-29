@@ -21,6 +21,9 @@ export default function Home() {
         <li>
           <Link to="/srgb-triangle">SRGB Triangle</Link>
         </li>
+        <li>
+          <Link to="/rotating-cube">Rotating Cube</Link>
+        </li>
       </ul>
     </div>
   )

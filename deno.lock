@@ -32,7 +32,8 @@
     "npm:react-router-dom@^7.3.0": "7.3.0_react@18.3.1_react-dom@18.3.1__react@18.3.1",
     "npm:react@^18.3.1": "18.3.1",
     "npm:vite@*": "5.4.11_@types+node@22.5.4",
-    "npm:vite@^5.4.11": "5.4.11_@types+node@22.5.4"
+    "npm:vite@^5.4.11": "5.4.11_@types+node@22.5.4",
+    "npm:wgpu-matrix@^3.4.0": "3.4.0"
   },
   "jsr": {
     "@oak/commons@1.0.0": {
@@ -697,6 +698,9 @@
         "rollup"
       ]
     },
+    "wgpu-matrix@3.4.0": {
+      "integrity": "sha512-kXHrbAPKEn9A32Wf4wVldyx9MmnzwhuB5p8GCqoJP3ItU5+iDT4J3aTQwPZWkfb153hwGtqZtUwR2M+ipJKadg=="
+    },
     "yallist@3.1.1": {
       "integrity": "sha512-a4UGQaWPH59mOXUYnAG2ewncQS4i4F43Tv3JoAM+s2VDAmS9NsK8GpDMLrCHPksFT7h3K6TOoUNn2pb7RoXx4g=="
     }
@@ -714,7 +718,8 @@
       "npm:react-dom@^18.3.1",
       "npm:react-router-dom@^7.3.0",
       "npm:react@^18.3.1",
-      "npm:vite@^5.4.11"
+      "npm:vite@^5.4.11",
+      "npm:wgpu-matrix@^3.4.0"
     ]
   }
 }
