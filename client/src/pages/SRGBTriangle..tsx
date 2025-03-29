@@ -1,5 +1,4 @@
 import { useRef } from "react";
-import { Link } from "react-router-dom";
 import useSRGBTriangle from "../hooks/useSRGBTriangle";
 import HomeLink from "../components/HomeLink";
 

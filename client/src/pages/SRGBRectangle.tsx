@@ -1,5 +1,4 @@
 import { useRef } from "react";
-import { Link } from "react-router-dom";
 import useSRGBRectangle from "../hooks/useSRGBRectangle";
 import HomeLink from "../components/HomeLink";
 export default function SRGBRectangle() {
