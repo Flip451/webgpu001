@@ -20,3 +20,13 @@ export const configureContext = (context: GPUCanvasContext, device: GPUDevice) =
 
   return { presentationFormat };
 }
+
+export const getDepthTexture = (device: GPUDevice, canvasWidth: number, canvasHeight: number) => {
+  const depthTexture = device.createTexture({
+    size: [canvasWidth, canvasHeight],
+    format: 'depth24plus',
+    usage: GPUTextureUsage.RENDER_ATTACHMENT,
+  })
+
+  return depthTexture;
+}

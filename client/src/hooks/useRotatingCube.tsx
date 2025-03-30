@@ -3,7 +3,7 @@ import bufferWithMatricesWGSL from "../shaders/bufferWithMatrices.wgsl?raw";
 import queryKeys from "../config/queryKeys";
 import { useQuery } from "@tanstack/react-query";
 import { mat4, vec3 } from 'wgpu-matrix';
-import { getDevice, configureContext } from "../helpers/gpuUtils";
+import { getDevice, configureContext, getDepthTexture } from "../helpers/gpuUtils";
 
 const getVertices = () => {
   const vertexSize = 4 * 8;  // Byte size of one vertex.
@@ -126,6 +126,11 @@ const createPipeline = (presentationFormat: GPUTextureFormat, device: GPUDevice)
     },
     primitive: {
       topology: 'triangle-list',
+    },
+    depthStencil: {
+      depthWriteEnabled: true,
+      depthCompare: 'less',
+      format: 'depth24plus',
     }
   })
 
@@ -255,6 +260,8 @@ const useRotatingCube = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
 
     const commandEncoder = g_device_unwrapped.createCommandEncoder();
 
+    const depthTexture = getDepthTexture(g_device_unwrapped, context.canvas.width, context.canvas.height);
+
     const textureView = context.getCurrentTexture().createView();
     const renderPassDescriptor: GPURenderPassDescriptor = {
       colorAttachments: [
@@ -270,6 +277,12 @@ const useRotatingCube = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
           storeOp: 'store',
         },
       ],
+      depthStencilAttachment: {
+        view: depthTexture.createView(),
+        depthClearValue: 1.0,
+        depthLoadOp: 'clear',
+        depthStoreOp: 'store',
+      }
     };
     const passEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
     passEncoder.setPipeline(pipeline);
