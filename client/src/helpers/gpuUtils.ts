@@ -30,3 +30,29 @@ export const getDepthTexture = (device: GPUDevice, canvasWidth: number, canvasHe
 
   return depthTexture;
 }
+
+export const createAndSetVertexBuffer = (device: GPUDevice, vertexArray: Float32Array) => {
+  const vertexBuffer = device.createBuffer({
+    size: vertexArray.byteLength,
+    usage: GPUBufferUsage.VERTEX,
+    mappedAtCreation: true,
+  })
+
+  new Float32Array(vertexBuffer.getMappedRange()).set(vertexArray);
+  vertexBuffer.unmap();
+
+  return vertexBuffer;
+}
+
+export const createAndSetIndexBuffer = (device: GPUDevice, indexArray: Uint16Array) => {
+  const indexBuffer = device.createBuffer({
+    size: indexArray.byteLength,
+    usage: GPUBufferUsage.INDEX,
+    mappedAtCreation: true,
+  });
+
+  new Uint16Array(indexBuffer.getMappedRange()).set(indexArray);
+  indexBuffer.unmap();
+
+  return indexBuffer;
+}

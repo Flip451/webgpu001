@@ -24,6 +24,9 @@ export default function Home() {
         <li>
           <Link to="/rotating-cube">Rotating Cube</Link>
         </li>
+        <li>
+          <Link to="/rotatable-cube">Rotatable Cube</Link>
+        </li>
       </ul>
     </div>
   )
