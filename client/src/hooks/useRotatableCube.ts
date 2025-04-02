@@ -182,7 +182,13 @@ const useRotatableCube = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
     const worldMatrix = mat4.identity();
     mat4.rotate(
       worldMatrix,
-      vec3.fromValues(Math.sin(phi), -Math.cos(phi), 0),
+      vec3.fromValues(0, 1, 0),
+      phi,
+      worldMatrix,
+    );
+    mat4.rotate(
+      worldMatrix,
+      vec3.fromValues(Math.cos(phi), 0, Math.sin(phi)),
       theta,
       worldMatrix,
     );

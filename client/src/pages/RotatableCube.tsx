@@ -8,18 +8,18 @@ export default function RotatableCube() {
 
   return (
     <div>
-      <h1>Simple Cube</h1>
+      <h1>Rotatable Cube</h1>
 
       <h2>{message}</h2>
       {isLoading && <h2>Loading...</h2>}
 
       <div>
         <label>Phi</label>
-        <input type="range" min={0} max={Math.PI * 2} step={Math.PI / 200} value={phi} onChange={(e) => setPhi(Number(e.target.value))} />
+        <input type="range" min={0} max={Math.PI * 2} step={Math.PI / 100} value={phi} onChange={(e) => setPhi(Number(e.target.value))} />
       </div>
       <div>
         <label>Theta</label>
-        <input type="range" min={0} max={Math.PI} step={0.1} value={theta} onChange={(e) => setTheta(Number(e.target.value))} />
+        <input type="range" min={-Math.PI / 2} max={Math.PI / 2} step={0.1} value={theta} onChange={(e) => setTheta(Number(e.target.value))} />
       </div>
 
       <div>
