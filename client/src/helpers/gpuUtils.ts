@@ -56,3 +56,12 @@ export const createAndSetIndexBuffer = (device: GPUDevice, indexArray: Uint16Arr
 
   return indexBuffer;
 }
+
+export const createMsaaTexture = (device: GPUDevice, canvasWidth: number, canvasHeight: number, sampleCount: number, presentationFormat: GPUTextureFormat) => {
+  return device.createTexture({
+    size: [canvasWidth, canvasHeight],
+    sampleCount,
+    format: presentationFormat,
+    usage: GPUTextureUsage.RENDER_ATTACHMENT,
+  })
+}

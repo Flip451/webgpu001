@@ -2,12 +2,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import triangleWGSL from "../shaders/triangle.wgsl?raw";
 import queryKeys from "../config/queryKeys";
 import { useQuery } from "@tanstack/react-query";
-import { configureContext, getDevice } from "../helpers/gpuUtils";
+import { configureContext, createMsaaTexture, getDevice } from "../helpers/gpuUtils";
 
+const multisampleCount = 4;
 
 // RenderPipeline の設定
 // 詳細は https://zenn.dev/emadurandal/books/cb6818fd3a1b2e/viewer/hello_triangle#renderpipeline%E3%81%AE%E8%A8%AD%E5%AE%9A を参照
-const createPipeline = (device: GPUDevice, presentationFormat: GPUTextureFormat) => {
+const createPipeline = (device: GPUDevice, presentationFormat: GPUTextureFormat, multisampleCount: number) => {
   const pipeline = device.createRenderPipeline({
     layout: 'auto',
     vertex: {
@@ -30,6 +31,9 @@ const createPipeline = (device: GPUDevice, presentationFormat: GPUTextureFormat)
     },
     primitive: {
       topology: 'triangle-list',
+    },
+    multisample: {
+      count: multisampleCount,
     }
   })
 
@@ -87,7 +91,7 @@ const useRedTriangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
     staleTime: 0
   })
 
-  const render = useCallback((context: GPUCanvasContext, pipeline: GPURenderPipeline) => {
+  const render = useCallback((context: GPUCanvasContext, pipeline: GPURenderPipeline, presentationFormat: GPUTextureFormat) => {
     const device = g_device.current;
 
     if (!device) {
@@ -97,10 +101,18 @@ const useRedTriangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
     const commandEncoder = device.createCommandEncoder();
 
     const textureView = context.getCurrentTexture().createView();
+
+    const msaaTexture = createMsaaTexture(device, context.canvas.width, context.canvas.height, multisampleCount, presentationFormat);
+
     const renderPassDescriptor: GPURenderPassDescriptor = {
       colorAttachments: [
         {
-          view: textureView,
+          // このカラーアタッチメントのために出力されるテクスチャサブリソースを記述したGPUTextureView
+          // 要は直接的な出力先です。今回はマルチサンプルなレンダーターゲットテクスチャ
+          view: msaaTexture.createView(),
+          // GPURenderPassColorAttachment#viewがマルチサンプルの場合、
+          // このカラーアタッチメントの解決された出力を受け取るテクスチャサブリソースを記述するGPUTextureView
+          resolveTarget: textureView,
           clearValue: {
             r: 0.0,
             g: 0.0,
@@ -108,7 +120,9 @@ const useRedTriangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
             a: 0.0,
           },
           loadOp: 'clear',
-          storeOp: 'store',
+          // viewに指定したテクスチャについて、レンダーパス処理後の扱いを指定する
+          // MSAA用のテクスチャの内容はすぐ転送される一時的なものなので、discardを指定
+          storeOp: 'discard',
         },
       ],
     };
@@ -138,12 +152,12 @@ const useRedTriangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
     const { context, presentationFormat } = data;
     setMessage("started");
 
-    const pipeline = createPipeline(g_device.current, presentationFormat);
+    const pipeline = createPipeline(g_device.current, presentationFormat, multisampleCount);
 
     let animationFrameId: number;
     const animationFrame = () => {
       try {
-        render(context, pipeline);
+        render(context, pipeline, presentationFormat);
         animationFrameId = requestAnimationFrame(animationFrame);
       } catch (error) {
         console.error(error);
