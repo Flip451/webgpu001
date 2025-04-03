@@ -2,17 +2,50 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import triangleWGSL from "../shaders/triangle.wgsl?raw";
 import queryKeys from "../config/queryKeys";
 import { useQuery } from "@tanstack/react-query";
+import { configureContext, getDevice } from "../helpers/gpuUtils";
+
+
+// RenderPipeline の設定
+// 詳細は https://zenn.dev/emadurandal/books/cb6818fd3a1b2e/viewer/hello_triangle#renderpipeline%E3%81%AE%E8%A8%AD%E5%AE%9A を参照
+const createPipeline = (device: GPUDevice, presentationFormat: GPUTextureFormat) => {
+  const pipeline = device.createRenderPipeline({
+    layout: 'auto',
+    vertex: {
+      module: device.createShaderModule({
+        code: triangleWGSL,
+      }),
+      entryPoint: 'vs_main',
+    },
+    fragment: {
+      module: device.createShaderModule({
+        code: triangleWGSL,
+      }),
+      entryPoint: 'fs_main',
+      targets: [
+        // 0
+        { // @location(0) in fragment shader
+          format: presentationFormat,
+        }
+      ]
+    },
+    primitive: {
+      topology: 'triangle-list',
+    }
+  })
+
+  return pipeline;
+}
 
 const useRedTriangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
   const [message, setMessage] = useState<string>("starting...");
   const g_device = useRef<GPUDevice | null>(null);
 
-  const initialize = useCallback(async () => {
+  const getContext = useCallback(() => {
     const canvas = canvasRef.current;
 
     if (!canvas) {
       throw new Error("no canvas");
-    };
+    }
 
     // webgpu コンテキストの取得
     const context = canvas.getContext("webgpu");
@@ -21,56 +54,29 @@ const useRedTriangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
       throw new Error("no webgpu context");
     }
 
-    // device の取得{adapterは物理デバイス（物理的なGPU）、deviceは論理デバイス（抽象化したGPU）)
-    const g_adapter = await navigator.gpu.requestAdapter();
-    const g_device_tmp = await g_adapter?.requestDevice();
+    return context;
+  }, [])
 
-    if (!g_device_tmp) {
-      throw new Error("no device");
-    }
+  const loadDevice = useCallback(async () => {
+    const device = await getDevice();
+    g_device.current = device;
+    return device;
+  }, [])
 
-    g_device.current = g_device_tmp;
+  const initialize = useCallback(async () => {
+    setMessage("initializing...");
+    const context = getContext();
+    const device = await loadDevice();
+    setMessage("initialized");
 
     // context の設定
-    const presentationFormat = navigator.gpu.getPreferredCanvasFormat();
-    context.configure({
-      device: g_device.current,
-      format: presentationFormat,
-      alphaMode: 'premultiplied',
-    });
-
-    // RenderPipeline の設定
-    // 詳細は https://zenn.dev/emadurandal/books/cb6818fd3a1b2e/viewer/hello_triangle#renderpipeline%E3%81%AE%E8%A8%AD%E5%AE%9A を参照
-    const pipeline = g_device.current.createRenderPipeline({
-      layout: 'auto',
-      vertex: {
-        module: g_device.current.createShaderModule({
-          code: triangleWGSL,
-        }),
-        entryPoint: 'vs_main',
-      },
-      fragment: {
-        module: g_device.current.createShaderModule({
-          code: triangleWGSL,
-        }),
-        entryPoint: 'fs_main',
-        targets: [
-          // 0
-          { // @location(0) in fragment shader
-            format: presentationFormat,
-          }
-        ]
-      },
-      primitive: {
-        topology: 'triangle-list',
-      }
-    })
+    const { presentationFormat } = configureContext(context, device);
 
     return {
       context,
-      pipeline,
+      presentationFormat,
     }
-  }, [])
+  }, [setMessage, getContext, loadDevice])
 
   const { isLoading, data, error } = useQuery({
     queryKey: [queryKeys.redTriangle],
@@ -81,14 +87,14 @@ const useRedTriangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
     staleTime: 0
   })
 
-  const frame = useCallback((context: GPUCanvasContext, pipeline: GPURenderPipeline) => {
-    const g_device_unwrapped = g_device.current;
+  const render = useCallback((context: GPUCanvasContext, pipeline: GPURenderPipeline) => {
+    const device = g_device.current;
 
-    if (!g_device_unwrapped) {
+    if (!device) {
       throw new Error("no device");
     }
 
-    const commandEncoder = g_device_unwrapped.createCommandEncoder();
+    const commandEncoder = device.createCommandEncoder();
 
     const textureView = context.getCurrentTexture().createView();
     const renderPassDescriptor: GPURenderPassDescriptor = {
@@ -117,7 +123,7 @@ const useRedTriangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
 
     passEncoder.end();
 
-    g_device_unwrapped.queue.submit([commandEncoder.finish()]);
+    device.queue.submit([commandEncoder.finish()]);
   }, [])
 
   useEffect(() => {
@@ -125,15 +131,21 @@ const useRedTriangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
       return;
     }
 
-    const { context, pipeline } = data;
+    if (!g_device.current) {
+      throw new Error("no device");
+    }
+
+    const { context, presentationFormat } = data;
     setMessage("started");
+
+    const pipeline = createPipeline(g_device.current, presentationFormat);
 
     let animationFrameId: number;
     const animationFrame = () => {
       try {
-        frame(context, pipeline);
+        render(context, pipeline);
         animationFrameId = requestAnimationFrame(animationFrame);
-      } catch(error) {
+      } catch (error) {
         console.error(error);
         cancelAnimationFrame(animationFrameId);
         setMessage("Error occurred in animation frame");
@@ -144,15 +156,9 @@ const useRedTriangle = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
 
     return () => {
       cancelAnimationFrame(animationFrameId);
-
-      if (g_device.current) {
-        g_device.current.destroy();
-        g_device.current = null;
-      }
-
       setMessage("stopped");
     }
-  }, [frame, data]);
+  }, [render, data]);
 
   useEffect(() => {
     if (error) {
