@@ -60,7 +60,7 @@ const getVertices = () => {
   return { vertexSize, vertexArray, positionOffset, colorOffset, indexArray, indexCount: indexArray.length }
 }
 
-const createPipeline = (presentationFormat: GPUTextureFormat, device: GPUDevice) => {
+const createPipeline = (device: GPUDevice, presentationFormat: GPUTextureFormat) => {
   const { vertexSize, vertexArray, positionOffset, colorOffset, indexArray, indexCount } = getVertices();
 
   const vertexBuffer = createAndSetVertexBuffer(device, vertexArray);
@@ -156,6 +156,7 @@ const useRotatableCube = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
 
     return {
       context,
+      device,
       presentationFormat,
     }
   }, [setMessage, getContext, loadDevice])
@@ -272,32 +273,40 @@ const useRotatableCube = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
     device.queue.submit([commandBuffer]);
   }, [])
 
-  const frame = useCallback((context: GPUCanvasContext, presentationFormat: GPUTextureFormat, aspectRatio: number) => {
+  const frame = useCallback((
+    context: GPUCanvasContext,
+    pipeline: GPURenderPipeline,
+    vertexBuffer: GPUBuffer,
+    indexBuffer: GPUBuffer,
+    indexCount: number,
+    aspectRatio: number,
+  ) => {
     const device = g_device.current;
 
     if (!device) {
       throw new Error("no device");
     }
 
-    const { pipeline, vertexBuffer, indexBuffer, indexCount } = createPipeline(presentationFormat, device);
     const uniformBufferBindGroup = getUniformBufferBindGroup(device, pipeline, aspectRatio);
     render(context, pipeline, vertexBuffer, indexBuffer, indexCount, uniformBufferBindGroup);
-  }, [render, createPipeline, getUniformBufferBindGroup])
+  }, [render, getUniformBufferBindGroup])
 
   useEffect(() => {
     if (!data) {
       return;
     }
 
-    const { context, presentationFormat } = data;
+    const { context, device, presentationFormat } = data;
     const aspectRatio = context.canvas.width / context.canvas.height;
 
     setMessage("started");
 
+    const { pipeline, vertexBuffer, indexBuffer, indexCount } = createPipeline(device, presentationFormat);
+
     let animationFrameId: number;
     const animationFrame = () => {
       try {
-        frame(context, presentationFormat, aspectRatio);
+        frame(context, pipeline, vertexBuffer, indexBuffer, indexCount, aspectRatio);
         animationFrameId = requestAnimationFrame(animationFrame);
       } catch (error) {
         console.error(error);
