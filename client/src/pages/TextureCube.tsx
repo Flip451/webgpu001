@@ -1,14 +1,14 @@
-import { useRef } from "react";
-import useSimpleCube from "../hooks/useRotatingCube";
-import HomeLink from "../components/HomeLink";
+import { useRef } from "react"
+import HomeLink from "../components/HomeLink"
+import useTextureCube from "../hooks/useTextureCube"
 
-export default function RotatingCube() {
+export default function TextureCube() {
   const ref = useRef<HTMLCanvasElement>(null)
-  const { isLoading, message } = useSimpleCube(ref)
+  const { isLoading, message } = useTextureCube(ref)
 
   return (
     <div>
-      <h1>Rotating Cube</h1>
+      <h1>Texture Cube</h1>
 
       <h2>{message}</h2>
       {isLoading && <h2>Loading...</h2>}

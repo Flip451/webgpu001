@@ -27,6 +27,9 @@ export default function Home() {
         <li>
           <Link to="/rotatable-cube">Rotatable Cube</Link>
         </li>
+        <li>
+          <Link to="/texture-cube">Texture Cube</Link>
+        </li>
       </ul>
     </div>
   )

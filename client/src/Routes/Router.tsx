@@ -6,6 +6,7 @@ import SRGBTriangle from "../pages/SRGBTriangle.";
 import ColorfulRectangle from "../pages/ColorfulRectangle";
 import RotatingCube from "../pages/RotatingCube";
 import RotatableCube from "../pages/RotatableCube";
+import TextureCube from "../pages/TextureCube";
 
 export default function Router() {
   return (
@@ -17,6 +18,7 @@ export default function Router() {
       <Route path="/srgb-triangle" element={<SRGBTriangle />} />
       <Route path="/rotating-cube" element={<RotatingCube />} />
       <Route path="/rotatable-cube" element={<RotatableCube />} />
+      <Route path="/texture-cube" element={<TextureCube />} />
     </Routes>
   )
 }

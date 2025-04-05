@@ -65,3 +65,32 @@ export const createMsaaTexture = (device: GPUDevice, canvasWidth: number, canvas
     usage: GPUTextureUsage.RENDER_ATTACHMENT,
   })
 }
+
+export const createJpegTexture = async (device: GPUDevice, jpeg: HTMLImageElement) => {
+  await jpeg.decode();
+  const imageBitmap = await createImageBitmap(jpeg);
+
+  const texture = device.createTexture({
+    size: [imageBitmap.width, imageBitmap.height, 1],
+    format: 'rgba8unorm',
+    usage:
+      GPUTextureUsage.TEXTURE_BINDING |
+      GPUTextureUsage.COPY_DST |
+      GPUTextureUsage.RENDER_ATTACHMENT
+  });
+
+  device.queue.copyExternalImageToTexture(
+    { source: imageBitmap },
+    { texture },
+    [imageBitmap.width, imageBitmap.height]
+  );
+
+  return texture;
+}
+
+export const createLinearSampler = (device: GPUDevice) => {
+  return device.createSampler({
+    magFilter: 'linear',
+    minFilter: 'linear',
+  });
+}

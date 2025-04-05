@@ -4,6 +4,7 @@ const queryKeys = {
   srgbTriangle: "srgbTriangle",
   rotatingCube: "rotatingCube",
   rotatableCube: "rotatableCube",
+  textureCube: "textureCube",
 } as const;
 
 export default queryKeys;
