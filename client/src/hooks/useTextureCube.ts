@@ -164,6 +164,18 @@ const createPipeline = (device: GPUDevice, verticesInfo: VerticesInfo, presentat
         // 0
         { // @location(0) in fragment shader
           format: presentationFormat,
+          blend: {
+            color: {
+              srcFactor: 'src-alpha',
+              dstFactor: 'one',
+              operation: 'add',
+            },
+            alpha: {
+              srcFactor: 'zero',
+              dstFactor: 'one',
+              operation: 'add',
+            },
+          }
         }
       ]
     },
